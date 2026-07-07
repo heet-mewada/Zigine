@@ -1,0 +1,15 @@
+0
+103164 13656917 1783349485938194074 f420dac49aaed70022667c1a712ec820 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_audio.h
+1234862 13656924 1783349485944194095 9d5715b3b491faab7ff19831e004ad65 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_gfx.h
+41630 13656915 1783349485938194074 06a5d60b9cf2af298555b9db250c95c5 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_app_imgui.h
+7516 13656930 1783349485947194106 dde53dc328ee05b02095174679493a2e 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_glue.h
+595764 13656913 1783349485938194074 ddee213307fa14bcf7750d399993cfef 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_app.h
+191262 13656932 1783349485948194110 12ebb0f6dd793b67c36c61806e5412d9 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_imgui.h
+266514 13656919 1783349485939194077 a5a82a4d804631a397e4028384b180a2 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_debugtext.h
+230591 13656928 1783349485947194106 67f4baa675cfc029032b79ed332188ec 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_gl.h
+56063 13656936 1783349485948194110 05da6a495ca4ee81df9a8e5aa8c40889 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_shape.h
+258 13656920 1783349485939194077 ce52ce3c38302a6877ae27fda5d47824 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_defines.h
+11859 13656934 1783349485948194110 cb5f6e420fbcf115d1de31d33ada579a 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_log.h
+118134 13656922 1783349485940194081 a44162a7ec68ce164021ad1553b0875f 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_fetch.h
+11054 13656938 1783349485948194110 93d9c5ddf4a76c7a018604464193a0d6 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_time.h
+216207 13656926 1783349485945194099 e9ddc9b96469a81b9289a244cc065f2b 1 zig-pkg/sokol-0.1.0-pb1HKxrKNwAfEuu5wEOJo8yYNxmbsqa88hcjQ7A0NIYa/src/sokol/c/sokol_gfx_imgui.h
