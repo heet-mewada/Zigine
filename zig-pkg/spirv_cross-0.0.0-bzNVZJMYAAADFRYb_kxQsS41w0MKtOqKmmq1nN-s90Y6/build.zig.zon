@@ -1,0 +1,16 @@
+.{
+    .name = .spirv_cross,
+    .version = "0.0.0",
+    .dependencies = .{
+        .@"SPIRV-Cross" = .{
+            .url = "git+https://github.com/KhronosGroup/SPIRV-Cross#072444287f4e139c178d6d8fe32e04a0d2c34e8b",
+            .hash = "N-V-__8AAAnhtQA4NO_fga9K4QmJsbjE0F3nlNTjv9fJ6u_E",
+            .lazy = true,
+        },
+    },
+    .paths = .{
+        "build.zig",
+        "build.zig.zon",
+    },
+    .fingerprint = 0x7ea1d836455336f,
+}

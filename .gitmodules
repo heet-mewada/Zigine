@@ -1,0 +1,6 @@
+[submodule "vendor/sokol"]
+	path = vendor/sokol
+	url = https://github.com/floooh/sokol.git
+[submodule "vendor/sokol-zig"]
+	path = vendor/sokol-zig
+	url = https://github.com/floooh/sokol-zig.git
