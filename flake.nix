@@ -42,8 +42,11 @@
 
             pkgs.neovim
             pkgs.zellij
+
+            pkgs.jetbrains-mono
           ];
           shellHook = ''
+            onefetch
             exec zsh
           '';
         };

@@ -9,6 +9,16 @@ pub fn build(b: *std.Build) void {
         .target = target,
     });
 
+    const project_creation = b.addModule("project_creation", .{
+        .root_source_file = b.path("src/project-creation.zig"),
+        .target = target,
+    });
+
+    const ui_components = b.addModule("UI_components", .{
+        .root_source_file = b.path("src/ui_components.zig"),
+        .target = target,
+    });
+
     const sdl3 = b.dependency("sdl3", .{
         .target = target,
         .optimize = optimize,
@@ -19,7 +29,7 @@ pub fn build(b: *std.Build) void {
         .ext_net = false,
         .ext_shadercross = false,
         .ext_shadercross_dxc = false,
-        .ext_ttf = false,
+        .ext_ttf = true,
         .log_message_stack_size = 1024,
         .main = true,
         .renderer_debug_text_stack_size = 1024,
@@ -82,6 +92,8 @@ pub fn build(b: *std.Build) void {
     b.installArtifact(sdl_testing);
 
     exe.root_module.addImport("sdl3", sdl3.module("sdl3"));
+    exe.root_module.addImport("project_creation", project_creation);
+    exe.root_module.addImport("ui_components", ui_components);
     sdl_testing.root_module.addImport("sdl3", sdl3.module("sdl3"));
 
     const run_step = b.step("run", "Run the app");
