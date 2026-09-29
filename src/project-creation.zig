@@ -3,26 +3,20 @@ const std = @import("std");
 pub fn createProject(io: std.Io, name: []const u8, minimal: bool) !void {
     std.debug.print("Creating project: {s}\n", .{name});
 
-    // Current working directory
     const cwd = std.Io.Dir.cwd();
 
-    // Create and open the project directory
     var dir = try cwd.createDirPathOpen(io, name, .{});
     defer dir.close(io);
 
-    // arguments for zig init
-    var argv: [3][]const u8 = undefined;
+    // Build the correct argument list.
+    const argv: []const []const u8 = if (minimal)
+        &.{ "zig", "init", "-m" }
+    else
+        &.{ "zig", "init" };
 
-    argv[0] = "zig";
-    argv[1] = "init";
-
-    if (minimal) {
-        argv[2] = "-m";
-    }
-
-    // Run `zig init` inside the project directory
+    // Run `zig init` inside the project directory.
     var child = try std.process.spawn(io, .{
-        .argv = argv[0..3],
+        .argv = argv,
         .cwd = .{ .dir = dir },
         .stdin = .inherit,
         .stdout = .inherit,
@@ -71,9 +65,9 @@ pub fn createProject(io: std.Io, name: []const u8, minimal: bool) !void {
 }
 
 test "minimal" {
-    try createProject(std.testing.io, "Hi", true);
+    try createProject(std.testing.io, "Hi", false);
 }
 
 test "non-mini" {
-    try createProject(std.testing.io, "Hi2", false);
+    try createProject(std.testing.io, "Hi2", true);
 }
