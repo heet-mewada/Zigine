@@ -76,6 +76,19 @@ pub fn build(b: *std.Build) void {
         }),
     });
 
+    const demo = b.addExecutable(.{
+        .name = "ui-demo",
+        .root_module = b.createModule(.{
+            .root_source_file = b.path("src/ui_demo.zig"),
+            .target = target,
+            .optimize = optimize,
+            .imports = &.{
+                .{ .name = "ui-components", .module = ui_components },
+                .{ .name = "sdl3", .module = sdl3.module("sdl3") },
+            },
+        }),
+    });
+
     const sdl_testing = b.addExecutable(.{
         .name = "sdl-test",
         .root_module = b.createModule(.{
@@ -90,11 +103,16 @@ pub fn build(b: *std.Build) void {
 
     b.installArtifact(exe);
     b.installArtifact(sdl_testing);
+    b.installArtifact(demo);
 
     exe.root_module.addImport("sdl3", sdl3.module("sdl3"));
     exe.root_module.addImport("project_creation", project_creation);
     exe.root_module.addImport("ui_components", ui_components);
     sdl_testing.root_module.addImport("sdl3", sdl3.module("sdl3"));
+
+    const demo_step = b.step("ui-demo", "Run the UI layout demo");
+    const run_demo = b.addRunArtifact(demo);
+    demo_step.dependOn(&run_demo.step);
 
     const run_step = b.step("run", "Run the app");
     const sdl_step = b.step("sdl", "Test sdl");
