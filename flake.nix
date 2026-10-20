@@ -1,5 +1,5 @@
 {
-  description = "Zigine- 2D game engine";
+  description = "Zigine - 2D game engine";
 
   inputs = {
     nixpkgs.url = "github:nixos/nixpkgs?ref=nixos-26.05";
@@ -9,48 +9,79 @@
     { self, nixpkgs }:
     let
       system = "x86_64-linux";
+
       pkgs = import nixpkgs {
         inherit system;
         config.allowUnfree = true;
       };
+
+      runtimeLibs = with pkgs; [
+        sdl3
+        wayland
+        libxkbcommon
+        libdecor
+        libGL
+        mesa
+        stdenv.cc.cc.lib
+
+        xorg.libX11
+        xorg.libXext
+        xorg.libXcursor
+        xorg.libXi
+        xorg.libXrandr
+        xorg.libXfixes
+        xorg.libxcb
+
+        alsa-lib
+        udev
+      ];
     in
     {
-      devShells.${system} = {
-        default = pkgs.mkShell {
-          buildInputs = [
-            pkgs.zig
-            pkgs.zig-zlint
-            pkgs.zig-shell-completions
-            pkgs.zig.hook
+      devShells.${system}.default = pkgs.mkShell {
+        buildInputs = with pkgs; [
+          zig
+          zig-zlint
+          zig-shell-completions
+          zig.hook
 
-            pkgs.sdl3
-            pkgs.libX11
-            pkgs.libXi
-            pkgs.libXcursor
-            pkgs.libGL
-            pkgs.alsa-lib
+          sdl3
 
-            pkgs.pkg-config
-            pkgs.tree
-            pkgs.onefetch
+          libX11
+          libXi
+          libXcursor
+          libGL
+          alsa-lib
 
-            pkgs.wayland
-            pkgs.wayland-protocols
-            pkgs.libxkbcommon
-            pkgs.mesa
-            pkgs.waypipe
+          pkg-config
+          tree
+          onefetch
 
-            pkgs.neovim
-            pkgs.zellij
+          wayland
+          wayland-protocols
+          libxkbcommon
+          libdecor
+          mesa
+          waypipe
 
-            pkgs.jetbrains-mono
-          ];
-          shellHook = ''
-            onefetch
-            exec zsh
-          '';
-        };
+          xorg.libXext
+          xorg.libXrandr
+          xorg.libXfixes
+          xorg.libxcb
 
+          udev
+
+          neovim
+          zellij
+
+          jetbrains-mono
+        ];
+
+        LD_LIBRARY_PATH = pkgs.lib.makeLibraryPath runtimeLibs;
+
+        shellHook = ''
+          onefetch
+          exec zsh
+        '';
       };
     };
 }

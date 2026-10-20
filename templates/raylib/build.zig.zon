@@ -1,0 +1,7 @@
+.{
+    .name = .zigine_raylib_game,
+    .version = "0.1.0",
+    .fingerprint = 0xe4354955b15b6ef4,
+    .minimum_zig_version = "0.16.0",
+    .paths = .{ "build.zig", "build.zig.zon", "src" },
+}

@@ -1305,9 +1305,9 @@ pub const Rope = struct {
     }
 };
 
-// ============================================================================
+// ========================================================================
 // Tests
-// ============================================================================
+// ========================================================================
 
 test "basic rope insertion" {
     std.debug.print(
@@ -1370,58 +1370,18 @@ test "basic rope insertion" {
 }
 
 test "insert in middle" {
-    std.debug.print(
-        "\n\n============================================================\n",
-        .{},
-    );
-
-    std.debug.print(
-        "TEST: insert in middle\n",
-        .{},
-    );
-
-    std.debug.print(
-        "============================================================\n",
-        .{},
-    );
-
     var rope =
         Rope.init(std.testing.allocator);
 
     defer rope.deinit();
 
-    try rope.insert(
-        0,
-        "Hello world!",
-    );
-
-    std.debug.print(
-        "\n[1] Initial text:\n",
-        .{},
-    );
-
-    rope.dump();
-
-    try rope.insert(
-        6,
-        "beautiful ",
-    );
-
-    std.debug.print(
-        "\n[2] After inserting \"beautiful \" at offset 6:\n",
-        .{},
-    );
-
-    rope.dump();
+    try rope.insert(0, "Hello world!");
+    try rope.insert(6, "beautiful ");
 
     const content =
-        try rope.text(
-            std.testing.allocator,
-        );
+        try rope.text(std.testing.allocator);
 
-    defer std.testing.allocator.free(
-        content,
-    );
+    defer std.testing.allocator.free(content);
 
     try std.testing.expectEqualStrings(
         "Hello beautiful world!",
@@ -1430,58 +1390,18 @@ test "insert in middle" {
 }
 
 test "delete" {
-    std.debug.print(
-        "\n\n============================================================\n",
-        .{},
-    );
-
-    std.debug.print(
-        "TEST: delete\n",
-        .{},
-    );
-
-    std.debug.print(
-        "============================================================\n",
-        .{},
-    );
-
     var rope =
         Rope.init(std.testing.allocator);
 
     defer rope.deinit();
 
-    try rope.insert(
-        0,
-        "Hello beautiful world!",
-    );
-
-    std.debug.print(
-        "\n[1] Initial text:\n",
-        .{},
-    );
-
-    rope.dump();
-
-    try rope.delete(
-        6,
-        10,
-    );
-
-    std.debug.print(
-        "\n[2] After deleting \"beautiful \":\n",
-        .{},
-    );
-
-    rope.dump();
+    try rope.insert(0, "Hello beautiful world!");
+    try rope.delete(6, 10);
 
     const content =
-        try rope.text(
-            std.testing.allocator,
-        );
+        try rope.text(std.testing.allocator);
 
-    defer std.testing.allocator.free(
-        content,
-    );
+    defer std.testing.allocator.free(content);
 
     try std.testing.expectEqualStrings(
         "Hello world!",
@@ -1490,72 +1410,19 @@ test "delete" {
 }
 
 test "replace" {
-    std.debug.print(
-        "\n\n============================================================\n",
-        .{},
-    );
-
-    std.debug.print(
-        "TEST: replace\n",
-        .{},
-    );
-
-    std.debug.print(
-        "============================================================\n",
-        .{},
-    );
-
     var rope =
         Rope.init(std.testing.allocator);
 
     defer rope.deinit();
 
-    try rope.insert(
-        0,
-        "Hello world!",
-    );
-
-    std.debug.print(
-        "\n[1] Initial text:\n",
-        .{},
-    );
-
-    rope.dump();
-
-    try rope.replace(
-        6,
-        5,
-        "Zig",
-    );
-
-    std.debug.print(
-        "\n[2] After replacing \"world\" with \"Zig\":\n",
-        .{},
-    );
-
-    rope.dump();
-
-    try rope.replace(
-        0,
-        5,
-        "Goodbye",
-    );
-
-    std.debug.print(
-        "\n[3] After replacing \"Hello\" with \"Goodbye\":\n",
-        .{},
-    );
-
-    rope.dump();
+    try rope.insert(0, "Hello world!");
+    try rope.replace(6, 5, "Zig");
+    try rope.replace(0, 5, "Goodbye");
 
     const content =
-        try rope.text(
-            std.testing.allocator,
-        );
+        try rope.text(std.testing.allocator);
 
-    defer std.testing.allocator.free(
-        content,
-    );
+    defer std.testing.allocator.free(content);
 
     try std.testing.expectEqualStrings(
         "Goodbye Zig!",
@@ -1564,80 +1431,14 @@ test "replace" {
 }
 
 test "line summaries" {
-    std.debug.print(
-        "\n\n============================================================\n",
-        .{},
-    );
-
-    std.debug.print(
-        "TEST: line summaries\n",
-        .{},
-    );
-
-    std.debug.print(
-        "============================================================\n",
-        .{},
-    );
-
     var rope =
         Rope.init(std.testing.allocator);
 
     defer rope.deinit();
 
-    try rope.insert(
-        0,
-        "Hello\nWorld\nZig",
-    );
+    try rope.insert(0, "Hello\nWorld\nZig");
 
-    std.debug.print(
-        "\n[1] Initial multiline text:\n",
-        .{},
-    );
-
-    rope.dump();
-
-    const summary =
-        rope.summary();
-
-    std.debug.print(
-        "\nSummary details:\n",
-        .{},
-    );
-
-    std.debug.print(
-        "  bytes              = {}\n",
-        .{summary.bytes},
-    );
-
-    std.debug.print(
-        "  chars              = {}\n",
-        .{summary.chars},
-    );
-
-    std.debug.print(
-        "  lines              = {}\n",
-        .{summary.lines},
-    );
-
-    std.debug.print(
-        "  first_line_bytes   = {}\n",
-        .{summary.first_line_bytes},
-    );
-
-    std.debug.print(
-        "  last_line_bytes    = {}\n",
-        .{summary.last_line_bytes},
-    );
-
-    std.debug.print(
-        "  longest_line_bytes = {}\n",
-        .{summary.longest_line_bytes},
-    );
-
-    std.debug.print(
-        "  longest_line       = {}\n",
-        .{summary.longest_line},
-    );
+    const summary = rope.summary();
 
     try std.testing.expectEqual(
         @as(usize, 3),
@@ -1661,98 +1462,28 @@ test "line summaries" {
 }
 
 test "point to offset" {
-    std.debug.print(
-        "\n\n============================================================\n",
-        .{},
-    );
-
-    std.debug.print(
-        "TEST: point to offset\n",
-        .{},
-    );
-
-    std.debug.print(
-        "============================================================\n",
-        .{},
-    );
-
     var rope =
         Rope.init(std.testing.allocator);
 
     defer rope.deinit();
 
-    try rope.insert(
-        0,
-        "Hello\nWorld\nZig",
-    );
-
-    std.debug.print(
-        "\n[1] Rope used for point conversion:\n",
-        .{},
-    );
-
-    rope.dump();
+    try rope.insert(0, "Hello\nWorld\nZig");
 
     const points = [_]Point{
-        .{
-            .row = 0,
-            .column = 0,
-        },
-        .{
-            .row = 0,
-            .column = 5,
-        },
-        .{
-            .row = 1,
-            .column = 0,
-        },
-        .{
-            .row = 1,
-            .column = 3,
-        },
-        .{
-            .row = 2,
-            .column = 0,
-        },
-        .{
-            .row = 2,
-            .column = 3,
-        },
+        .{ .row = 0, .column = 0 },
+        .{ .row = 0, .column = 5 },
+        .{ .row = 1, .column = 0 },
+        .{ .row = 1, .column = 3 },
+        .{ .row = 2, .column = 0 },
+        .{ .row = 2, .column = 3 },
     };
-
-    std.debug.print(
-        "\nPoint -> offset -> point:\n",
-        .{},
-    );
 
     for (points) |point| {
         const offset =
-            try rope.pointToOffset(
-                point,
-            );
-
-        std.debug.print(
-            "  ({}, {}) -> {}\n",
-            .{
-                point.row,
-                point.column,
-                offset,
-            },
-        );
+            try rope.pointToOffset(point);
 
         const round_trip =
-            try rope.offsetToPoint(
-                offset,
-            );
-
-        std.debug.print(
-            "      {} -> ({}, {})\n",
-            .{
-                offset,
-                round_trip.row,
-                round_trip.column,
-            },
-        );
+            try rope.offsetToPoint(offset);
 
         try std.testing.expectEqual(
             point.row,
@@ -1767,55 +1498,14 @@ test "point to offset" {
 }
 
 test "unicode" {
-    std.debug.print(
-        "\n\n============================================================\n",
-        .{},
-    );
-
-    std.debug.print(
-        "TEST: unicode\n",
-        .{},
-    );
-
-    std.debug.print(
-        "============================================================\n",
-        .{},
-    );
-
     var rope =
         Rope.init(std.testing.allocator);
 
     defer rope.deinit();
 
-    try rope.insert(
-        0,
-        "Hello 世界 🌍!",
-    );
+    try rope.insert(0, "Hello 世界 🌍!");
 
-    std.debug.print(
-        "\n[1] After inserting Unicode text:\n",
-        .{},
-    );
-
-    rope.dump();
-
-    const summary =
-        rope.summary();
-
-    std.debug.print(
-        "\nUTF-8 statistics:\n",
-        .{},
-    );
-
-    std.debug.print(
-        "  bytes = {}\n",
-        .{summary.bytes},
-    );
-
-    std.debug.print(
-        "  chars = {}\n",
-        .{summary.chars},
-    );
+    const summary = rope.summary();
 
     try std.testing.expect(
         summary.bytes > summary.chars,
@@ -1826,74 +1516,25 @@ test "unicode" {
     );
 
     try std.testing.expect(
-        rope.isCharBoundary(
-            rope.len(),
-        ),
+        rope.isCharBoundary(rope.len()),
     );
 
     const content =
-        try rope.text(
-            std.testing.allocator,
-        );
+        try rope.text(std.testing.allocator);
 
-    defer std.testing.allocator.free(
-        content,
-    );
+    defer std.testing.allocator.free(content);
 
     try std.testing.expectEqualStrings(
-        "Hello 世界!",
+        "Hello 世界 🌍!",
         content,
     );
 
     try std.testing.expect(
-        std.unicode.utf8ValidateSlice(
-            content,
-        ),
-    );
-
-    try rope.insert(
-        6,
-        "beautiful ",
-    );
-
-    std.debug.print(
-        "\n[2] After inserting \"beautiful \":\n",
-        .{},
-    );
-
-    rope.dump();
-
-    const final_content =
-        try rope.text(
-            std.testing.allocator,
-        );
-
-    defer std.testing.allocator.free(
-        final_content,
-    );
-
-    try std.testing.expectEqualStrings(
-        "Hello 世界 !",
-        final_content,
+        std.unicode.utf8ValidateSlice(content),
     );
 }
 
 test "large text chunked" {
-    std.debug.print(
-        "\n\n============================================================\n",
-        .{},
-    );
-
-    std.debug.print(
-        "TEST: large text chunked\n",
-        .{},
-    );
-
-    std.debug.print(
-        "============================================================\n",
-        .{},
-    );
-
     var rope =
         Rope.init(std.testing.allocator);
 
@@ -1902,15 +1543,8 @@ test "large text chunked" {
     var buffer =
         std.ArrayList(u8).empty;
 
-    defer buffer.deinit(
-        std.testing.allocator,
-    );
+    defer buffer.deinit(std.testing.allocator);
 
-    // Generate text substantially larger than CHUNK_SIZE.
-    //
-    // Zig 0.16 does not provide the old ArrayList.writer()
-    // interface used by older Zig versions, so each formatted
-    // line is allocated and appended explicitly.
     for (0..1000) |i| {
         const line =
             try std.fmt.allocPrint(
@@ -1919,9 +1553,7 @@ test "large text chunked" {
                 .{i},
             );
 
-        defer std.testing.allocator.free(
-            line,
-        );
+        defer std.testing.allocator.free(line);
 
         try buffer.appendSlice(
             std.testing.allocator,
@@ -1929,24 +1561,7 @@ test "large text chunked" {
         );
     }
 
-    std.debug.print(
-        "\nGenerated {} bytes of text.\n",
-        .{buffer.items.len},
-    );
-
-    try rope.insert(
-        0,
-        buffer.items,
-    );
-
-    std.debug.print(
-        "\n[1] After inserting the large text:\n",
-        .{},
-    );
-
-    // Don't print 1000 lines of text to the terminal.
-    // The tree itself is still completely visualized.
-    rope.dumpWithOptions(false);
+    try rope.insert(0, buffer.items);
 
     try std.testing.expectEqual(
         buffer.items.len,
@@ -1963,13 +1578,9 @@ test "large text chunked" {
     );
 
     const content =
-        try rope.text(
-            std.testing.allocator,
-        );
+        try rope.text(std.testing.allocator);
 
-    defer std.testing.allocator.free(
-        content,
-    );
+    defer std.testing.allocator.free(content);
 
     try std.testing.expectEqualSlices(
         u8,
@@ -1977,48 +1588,22 @@ test "large text chunked" {
         content,
     );
 
-    // Insert something in the middle of the large rope.
-    const middle =
-        rope.len() / 2;
+    const middle = rope.len() / 2;
 
-    // Find a safe UTF-8 boundary.
-    var insertion_point =
-        middle;
+    var insertion_point = middle;
 
     while (insertion_point < rope.len() and
-        !rope.isCharBoundary(
-            insertion_point,
-        ))
+        !rope.isCharBoundary(insertion_point))
     {
         insertion_point += 1;
     }
 
-    try rope.insert(
-        insertion_point,
-        "[INSERTED]",
-    );
+    try rope.insert(insertion_point, "[INSERTED]");
 
-    std.debug.print(
-        "\n[2] After inserting \"[INSERTED]\" into the large rope:\n",
-        .{},
-    );
-
-    rope.dumpWithOptions(false);
-
-    try std.testing.expect(
-        rope.len() >
-            buffer.items.len,
-    );
-
-    // Verify the inserted text actually exists.
     const final_content =
-        try rope.text(
-            std.testing.allocator,
-        );
+        try rope.text(std.testing.allocator);
 
-    defer std.testing.allocator.free(
-        final_content,
-    );
+    defer std.testing.allocator.free(final_content);
 
     try std.testing.expect(
         std.mem.indexOf(

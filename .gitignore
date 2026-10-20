@@ -1,3 +1,21 @@
-./.zig-cache
-./zig-out
-./*.o
+# Zig build and dependency products
+.zig-cache/
+zig-cache/
+zig-out/
+zig-pkg/
+dist/
+
+# Compiled objects and native build products
+**/*.o
+**/*.obj
+**/*.a
+**/*.so
+**/*.dylib
+**/*.dll
+**/*.exe
+
+# Editor and temporary files
+*.swp
+*.swo
+*.un~
+*~

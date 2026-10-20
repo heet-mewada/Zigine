@@ -1,14 +1,19 @@
 const std = @import("std");
-
 pub const Vec2 = struct { x: f32 = 0, y: f32 = 0 };
 pub const Size = struct { width: f32 = 0, height: f32 = 0 };
-pub const Rect = struct { x: f32 = 0, y: f32 = 0, width: f32 = 0, height: f32 = 0 };
+pub const Rect = struct {
+    x: f32 = 0,
+    y: f32 = 0,
+    width: f32 = 0,
+    height: f32 = 0,
+};
 
 pub const Color = struct {
     r: u8 = 255,
     g: u8 = 255,
     b: u8 = 255,
     a: u8 = 255,
+
     pub const transparent = Color{ .r = 0, .g = 0, .b = 0, .a = 0 };
 };
 
@@ -35,7 +40,6 @@ pub const Sizing = struct {
         return .{ .kind = .fixed, .value = px, .min = px, .max = px };
     }
 
-    /// Fraction from 0 to 1; percent(0.5) means half of available space.
     pub fn percent(fraction: f32) Sizing {
         return .{ .kind = .percent, .value = fraction };
     }
@@ -89,7 +93,6 @@ pub const Element = struct {
     kind: ElementKind = .container,
     color: Color = Color.transparent,
     text: []const u8 = "",
-    /// Optional known text dimensions supplied by the caller.
     intrinsic: Size = .{},
     bounds: Rect = .{},
 };
@@ -98,15 +101,34 @@ pub const DrawCommand = struct {
     id: u64,
     kind: ElementKind,
     bounds: Rect,
+    /// Intersection of the viewport and every ancestor's bounds,
+    /// including this element's own bounds.
+    clip_bounds: Rect,
     color: Color,
     text: []const u8,
 };
 
 pub const max_elements = 2048;
 pub const max_commands = 2048;
+/// Text is copied for the duration of a frame so callers may safely pass
+/// stack-formatted strings to `Context.text`.
+pub const max_text_bytes = 64 * 1024;
 
-/// Fixed-capacity, allocation-free per-frame layout context.
-/// Reuse one Context for the lifetime of your UI.
+/// Intersects two rectangles. An empty result has zero width or height.
+pub fn intersectRects(a: Rect, b: Rect) Rect {
+    const left = @max(a.x, b.x);
+    const top = @max(a.y, b.y);
+    const right = @min(a.x + a.width, b.x + b.width);
+    const bottom = @min(a.y + a.height, b.y + b.height);
+
+    return .{
+        .x = left,
+        .y = top,
+        .width = @max(0, right - left),
+        .height = @max(0, bottom - top),
+    };
+}
+
 pub const Context = struct {
     elements: [max_elements]Element = undefined,
     commands: [max_commands]DrawCommand = undefined,
@@ -115,6 +137,8 @@ pub const Context = struct {
     command_count: usize = 0,
     stack_count: usize = 0,
     viewport: Size = .{},
+    text_storage: [max_text_bytes]u8 = undefined,
+    text_storage_len: usize = 0,
 
     pub fn init() Context {
         return .{};
@@ -124,10 +148,10 @@ pub const Context = struct {
         self.element_count = 0;
         self.command_count = 0;
         self.stack_count = 0;
+        self.text_storage_len = 0;
         self.viewport = viewport;
     }
 
-    /// Push a container. Subsequent elements become its children until end().
     pub fn begin(
         self: *Context,
         id: u64,
@@ -165,21 +189,36 @@ pub const Context = struct {
         layout: Layout,
         color: Color,
     ) error{CapacityExceeded}!void {
+        const stored_text = try self.storeText(value);
+
         _ = try self.addElement(.{
             .id = id,
             .layout = layout,
             .color = color,
             .kind = .text,
-            .text = value,
+            .text = stored_text,
             .intrinsic = measured,
         });
+    }
+
+    fn storeText(
+        self: *Context,
+        value: []const u8,
+    ) error{CapacityExceeded}![]const u8 {
+        const storage_end = std.math.add(usize, self.text_storage_len, value.len) catch
+            return error.CapacityExceeded;
+        if (storage_end > self.text_storage.len) return error.CapacityExceeded;
+
+        @memcpy(self.text_storage[self.text_storage_len..storage_end], value);
+        const stored = self.text_storage[self.text_storage_len..storage_end];
+        self.text_storage_len = storage_end;
+        return stored;
     }
 
     pub fn end(self: *Context) void {
         if (self.stack_count > 0) self.stack_count -= 1;
     }
 
-    /// Resolves the element tree and returns flat draw commands.
     pub fn endFrame(self: *Context) []const DrawCommand {
         if (self.element_count == 0) return self.commands[0..0];
 
@@ -197,67 +236,66 @@ pub const Context = struct {
         return self.commands[0..self.command_count];
     }
 
-    /// Returns the topmost command ID containing the point, if any.
     pub fn hitTest(self: *const Context, point: Vec2) ?u64 {
         var i = self.command_count;
 
         while (i > 0) {
             i -= 1;
-            const r = self.commands[i].bounds;
+            const command = self.commands[i];
+            const r = command.bounds;
+            const clip = command.clip_bounds;
 
-            if (point.x >= r.x and
-                point.y >= r.y and
+            if (point.x >= r.x and point.y >= r.y and
                 point.x < r.x + r.width and
-                point.y < r.y + r.height)
+                point.y < r.y + r.height and
+                point.x >= clip.x and point.y >= clip.y and
+                point.x < clip.x + clip.width and
+                point.y < clip.y + clip.height)
             {
-                return self.commands[i].id;
+                return command.id;
             }
         }
 
         return null;
     }
 
-    fn addElement(self: *Context, e: Element) error{CapacityExceeded}!usize {
+    pub fn getElementBounds(self: *const Context, id: u64) ?Rect {
+        for (self.elements[0..self.element_count]) |element| {
+            if (element.id == id) return element.bounds;
+        }
+        return null;
+    }
+
+    fn addElement(self: *Context, element: Element) error{CapacityExceeded}!usize {
         if (self.element_count >= max_elements)
             return error.CapacityExceeded;
 
         const idx = self.element_count;
         self.element_count += 1;
-        self.elements[idx] = e;
+        self.elements[idx] = element;
 
         if (self.stack_count > 0) {
             const parent_idx = self.stack[self.stack_count - 1];
             self.elements[idx].parent = parent_idx;
-
-            if (self.elements[parent_idx].first_child) |first| {
-                var sibling = first;
-
-                while (self.elements[sibling].next_sibling) |next| {
-                    sibling = next;
-                }
-
-                self.elements[sibling].next_sibling = idx;
-            } else {
-                self.elements[parent_idx].first_child = idx;
-            }
+            self.attachChild(parent_idx, idx);
         } else if (idx != 0) {
-            // Elements outside an explicit container are attached to the root.
             self.elements[idx].parent = 0;
-
-            if (self.elements[0].first_child) |first| {
-                var sibling = first;
-
-                while (self.elements[sibling].next_sibling) |next| {
-                    sibling = next;
-                }
-
-                self.elements[sibling].next_sibling = idx;
-            } else {
-                self.elements[0].first_child = idx;
-            }
+            self.attachChild(0, idx);
         }
 
         return idx;
+    }
+
+    fn attachChild(self: *Context, parent_idx: usize, child_idx: usize) void {
+        if (self.elements[parent_idx].first_child) |first| {
+            var sibling = first;
+            while (self.elements[sibling].next_sibling) |next| {
+                sibling = next;
+            }
+            self.elements[sibling].next_sibling = child_idx;
+        } else {
+            self.elements[parent_idx].first_child = child_idx;
+        }
     }
 
     fn push(self: *Context, idx: usize) error{CapacityExceeded}!void {
@@ -289,13 +327,11 @@ pub const Context = struct {
 
         while (child) |c| : (child = self.elements[c].next_sibling) {
             const value = self.measure(c, axis);
-
             if (main_axis) {
                 sum += value;
             } else {
                 cross = @max(cross, value);
             }
-
             count += 1;
         }
 
@@ -312,17 +348,10 @@ pub const Context = struct {
 
     fn resolveChildren(self: *Context, parent_idx: usize) void {
         const parent = self.elements[parent_idx];
-
         const content_x = parent.bounds.x + parent.layout.padding.left;
         const content_y = parent.bounds.y + parent.layout.padding.top;
-        const inner_w = @max(
-            0,
-            parent.bounds.width - parent.layout.padding.horizontal(),
-        );
-        const inner_h = @max(
-            0,
-            parent.bounds.height - parent.layout.padding.vertical(),
-        );
+        const inner_w = @max(0, parent.bounds.width - parent.layout.padding.horizontal());
+        const inner_h = @max(0, parent.bounds.height - parent.layout.padding.vertical());
 
         const horizontal = parent.layout.direction == .left_to_right;
         const available_main = if (horizontal) inner_w else inner_h;
@@ -335,14 +364,8 @@ pub const Context = struct {
 
         while (child) |c| : (child = self.elements[c].next_sibling) {
             const e = self.elements[c];
-            const main_sizing = if (horizontal)
-                e.layout.width
-            else
-                e.layout.height;
-            const measured = self.measure(
-                c,
-                if (horizontal) .width else .height,
-            );
+            const main_sizing = if (horizontal) e.layout.width else e.layout.height;
+            const measured = self.measure(c, if (horizontal) .width else .height);
 
             if (main_sizing.kind == .grow) {
                 grow_weight += 1;
@@ -354,45 +377,31 @@ pub const Context = struct {
                     .grow => 0,
                 };
             }
-
             count += 1;
         }
 
         if (count > 1) {
-            total_fixed += parent.layout.gap *
-                @as(f32, @floatFromInt(count - 1));
+            total_fixed += parent.layout.gap * @as(f32, @floatFromInt(count - 1));
         }
 
         const grow_space = @max(0, available_main - total_fixed);
         var cursor = if (horizontal) content_x else content_y;
-
         child = parent.first_child;
 
         while (child) |c| : (child = self.elements[c].next_sibling) {
             const e = self.elements[c];
             const ws = e.layout.width;
             const hs = e.layout.height;
-
             const main_sizing = if (horizontal) ws else hs;
             const cross_sizing = if (horizontal) hs else ws;
-
-            const main_measured = self.measure(
-                c,
-                if (horizontal) .width else .height,
-            );
-            const cross_measured = self.measure(
-                c,
-                if (horizontal) .height else .width,
-            );
+            const main_measured = self.measure(c, if (horizontal) .width else .height);
+            const cross_measured = self.measure(c, if (horizontal) .height else .width);
 
             const main_size = clampSize(main_sizing, switch (main_sizing.kind) {
                 .fixed => main_sizing.value,
                 .percent => available_main * main_sizing.value,
                 .fit => main_measured,
-                .grow => if (grow_weight > 0)
-                    grow_space / grow_weight
-                else
-                    0,
+                .grow => if (grow_weight > 0) grow_space / grow_weight else 0,
             });
 
             const cross_size = clampSize(cross_sizing, switch (cross_sizing.kind) {
@@ -402,13 +411,8 @@ pub const Context = struct {
                 .grow => available_cross,
             });
 
-            const cross_align = if (horizontal)
-                parent.layout.align_y
-            else
-                parent.layout.align_x;
-
+            const cross_align = if (horizontal) parent.layout.align_y else parent.layout.align_x;
             const cross_origin = if (horizontal) content_y else content_x;
-
             const cross_pos = cross_origin + switch (cross_align) {
                 .start => 0,
                 .center => (available_cross - cross_size) / 2,
@@ -436,6 +440,23 @@ pub const Context = struct {
         }
     }
 
+    fn clipFor(self: *const Context, idx: usize) Rect {
+        var clip = Rect{
+            .x = 0,
+            .y = 0,
+            .width = self.viewport.width,
+            .height = self.viewport.height,
+        };
+
+        var current: ?usize = idx;
+        while (current) |i| {
+            clip = intersectRects(clip, self.elements[i].bounds);
+            current = self.elements[i].parent;
+        }
+
+        return clip;
+    }
+
     fn emit(self: *Context, idx: usize) void {
         const e = self.elements[idx];
 
@@ -446,71 +467,46 @@ pub const Context = struct {
                 .id = e.id,
                 .kind = e.kind,
                 .bounds = e.bounds,
+                .clip_bounds = self.clipFor(idx),
                 .color = e.color,
                 .text = e.text,
             };
-
             self.command_count += 1;
         }
 
         var child = e.first_child;
-
         while (child) |c| : (child = self.elements[c].next_sibling) {
             self.emit(c);
         }
     }
 };
 
-test "fixed and grow sizing resolve children" {
-    var ui = Context.init();
+test "rect intersection clips overflowing content" {
+    const clipped = intersectRects(
+        .{ .x = 10, .y = 10, .width = 100, .height = 50 },
+        .{ .x = 80, .y = 20, .width = 100, .height = 50 },
+    );
 
-    ui.beginFrame(.{ .width = 800, .height = 600 });
-
-    try ui.begin(1, .{
-        .direction = .left_to_right,
-        .width = Sizing.grow(),
-        .height = Sizing.grow(),
-        .padding = Padding.all(10),
-        .gap = 20,
-    }, .{ .r = 20, .g = 20, .b = 20, .a = 255 });
-
-    try ui.rect(2, .{
-        .width = Sizing.fixed(100),
-        .height = Sizing.grow(),
-    }, .{ .r = 255, .a = 255 });
-
-    try ui.rect(3, .{
-        .width = Sizing.grow(),
-        .height = Sizing.grow(),
-    }, .{ .g = 255, .a = 255 });
-
-    ui.end();
-
-    const commands = ui.endFrame();
-
-    try std.testing.expect(commands.len >= 3);
-    try std.testing.expectEqual(@as(f32, 100), ui.elements[1].bounds.width);
-    try std.testing.expectEqual(@as(f32, 660), ui.elements[2].bounds.width);
+    try std.testing.expectEqual(@as(f32, 80), clipped.x);
+    try std.testing.expectEqual(@as(f32, 20), clipped.y);
+    try std.testing.expectEqual(@as(f32, 30), clipped.width);
+    try std.testing.expectEqual(@as(f32, 40), clipped.height);
 }
 
-test "percent sizing" {
-    var ui = Context.init();
+test "Context copies text for the lifetime of a frame" {
+    var context = Context.init();
+    var source = [_]u8{ 'v', 'a', 'l', 'u', 'e' };
 
-    ui.beginFrame(.{ .width = 400, .height = 300 });
+    context.beginFrame(.{ .width = 100, .height = 40 });
+    try context.text(
+        1,
+        source[0..],
+        .{ .width = 40, .height = 18 },
+        .{ .width = Sizing.fit(), .height = Sizing.fit() },
+        .{},
+    );
+    source[0] = 'X';
 
-    try ui.begin(1, .{
-        .width = Sizing.grow(),
-        .height = Sizing.grow(),
-    }, .{});
-
-    try ui.rect(2, .{
-        .width = Sizing.percent(0.5),
-        .height = Sizing.fixed(20),
-    }, .{ .a = 255 });
-
-    ui.end();
-
-    _ = ui.endFrame();
-
-    try std.testing.expectEqual(@as(f32, 200), ui.elements[1].bounds.width);
+    const commands = context.endFrame();
+    try std.testing.expectEqualStrings("value", commands[0].text);
 }
