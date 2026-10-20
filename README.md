@@ -6,4 +6,4 @@ It is not ready for that remotely.
 Albeit you are free to try!
 
 # Building Instructions
-refer to (instructions here)[./packaging/README.md]
+refer to [instructions here](./packaging/README.md)
