@@ -89,6 +89,13 @@ fn renderScriptEditor(surface: anytype, editor: anytype) !void {
     const bounds = ui.intersectRects(placeholder_bounds, panel_bounds);
     if (bounds.width <= 0 or bounds.height <= 0) return;
 
+    if (editor.search_active) {
+        const search_bounds = ui.Rect{ .x = bounds.x + 8, .y = bounds.y + 6, .width = @min(360, bounds.width - 16), .height = 24 };
+        try surface.fillRect(.{ .x = @intFromFloat(search_bounds.x), .y = @intFromFloat(search_bounds.y), .w = @intFromFloat(search_bounds.width), .h = @intFromFloat(search_bounds.height) }, surface.mapRgb(35, 42, 62));
+        try render.drawText(surface, search_bounds, "Search: ", editor.palette.accent, search_bounds, .{ .scale = 1, .wrap = false });
+        try render.drawText(surface, .{ .x = search_bounds.x + 70, .y = search_bounds.y, .width = search_bounds.width - 75, .height = search_bounds.height }, editor.search_buffer[0..editor.search_len], editor.palette.text, search_bounds, .{ .scale = 1, .wrap = false });
+    }
+
     const source: []const u8 = editor.script_source.items;
     const line_height: f32 = 18;
     const char_width: f32 = 14;
@@ -767,7 +774,21 @@ pub fn main(init: std.process.Init) !void {
                             event.key_down.mod.right_control;
 
                         if (screen == .editor) {
-                            if (ctrl_pressed and key == .s) {
+                            if (ctrl_pressed and key == .f and editor.active_panel == .script) {
+                                editor.beginScriptSearch();
+                            } else if (editor.search_active) {
+                                if (key == .escape or key == .return_key) {
+                                    editor.endScriptSearch();
+                                } else if (key == .backspace) {
+                                    editor.backspaceSearch();
+                                } else if (key == .up or key == .down) {
+                                    editor.findNextSearchMatch();
+                                }
+                            } else if (ctrl_pressed and key == .z) {
+                                editor.undo() catch |err| editor.logMsg(@errorName(err));
+                            } else if (ctrl_pressed and key == .y) {
+                                editor.redo() catch |err| editor.logMsg(@errorName(err));
+                            } else if (ctrl_pressed and key == .s) {
                                 editor.saveScript(io) catch |err| {
                                     std.debug.print(
                                         "Could not save script: {s}\n",
@@ -922,6 +943,8 @@ pub fn main(init: std.process.Init) !void {
                         try editor.appendRenameText(text_event.text);
                     } else if (screen == .editor and editor.isEditingInspector()) {
                         try editor.appendInspectorText(text_event.text);
+                    } else if (screen == .editor and editor.search_active) {
+                        editor.appendSearchText(text_event.text);
                     } else if (screen == .editor and editor.isEditingScript()) {
                         try editor.appendScriptText(text_event.text);
                     } else if (screen == .editor and editor.isEditingTerminal()) {

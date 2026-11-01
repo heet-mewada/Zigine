@@ -148,6 +148,7 @@ pub const AssetItem = struct {
 };
 
 pub const Editor = struct {
+    const HistoryEntry = struct { node: NodeId, before: scene_mod.Transform2D, after: scene_mod.Transform2D };
     allocator: std.mem.Allocator,
     context: Context = Context.init(),
     active_panel: Panel = .scene,
@@ -175,6 +176,9 @@ pub const Editor = struct {
 
     script_source: std.ArrayList(u8) = .empty,
     script_cursor: usize = 0,
+    search_active: bool = false,
+    search_buffer: [128]u8 = [_]u8{0} ** 128,
+    search_len: usize = 0,
     script_scroll_line: usize = 0,
     script_scroll_column: usize = 0,
     editing_script: bool = false,
@@ -195,6 +199,10 @@ pub const Editor = struct {
     mouse_down_position: ui.Vec2 = .{},
     last_mouse_position: ui.Vec2 = .{},
     panning_camera: bool = false,
+    history: [128]HistoryEntry = undefined,
+    history_len: usize = 0,
+    history_cursor: usize = 0,
+    history_replaying: bool = false,
 
     snap_to_grid: bool = false,
     save_requested: bool = false,
@@ -652,7 +660,41 @@ pub const Editor = struct {
         var t = node.transform;
         t.position.x += dx;
         t.position.y += dy;
-        try self.scene.setTransform(selected, t);
+        try self.applyTransformWithHistory(selected, t);
+    }
+
+    fn applyTransformWithHistory(self: *Editor, node_id: NodeId, transform: scene_mod.Transform2D) !void {
+        const before = (try self.scene.getConst(node_id)).transform;
+        try self.scene.setTransform(node_id, transform);
+        if (self.history_replaying or std.meta.eql(before, transform)) return;
+        if (self.history_cursor < self.history_len) self.history_len = self.history_cursor;
+        if (self.history_len == self.history.len) {
+            std.mem.copyForwards(HistoryEntry, self.history[0 .. self.history.len - 1], self.history[1..]);
+            self.history_len -= 1;
+        }
+        self.history[self.history_len] = .{ .node = node_id, .before = before, .after = transform };
+        self.history_len += 1;
+        self.history_cursor = self.history_len;
+    }
+
+    pub fn undo(self: *Editor) !void {
+        if (self.history_cursor == 0) return;
+        self.history_cursor -= 1;
+        const entry = self.history[self.history_cursor];
+        if (!self.scene.contains(entry.node)) return;
+        self.history_replaying = true;
+        defer self.history_replaying = false;
+        try self.scene.setTransform(entry.node, entry.before);
+    }
+
+    pub fn redo(self: *Editor) !void {
+        if (self.history_cursor >= self.history_len) return;
+        const entry = self.history[self.history_cursor];
+        self.history_cursor += 1;
+        if (!self.scene.contains(entry.node)) return;
+        self.history_replaying = true;
+        defer self.history_replaying = false;
+        try self.scene.setTransform(entry.node, entry.after);
     }
 
     pub fn setPositionSelected(self: *Editor, x: f32, y: f32) !void {
@@ -661,7 +703,7 @@ pub const Editor = struct {
         var t = node.transform;
         t.position.x = x;
         t.position.y = y;
-        try self.scene.setTransform(selected, t);
+        try self.applyTransformWithHistory(selected, t);
     }
 
     pub fn addRotationSelected(self: *Editor, deg: f32) !void {
@@ -669,7 +711,7 @@ pub const Editor = struct {
         const node = try self.scene.getConst(selected);
         var t = node.transform;
         t.rotation += deg * std.math.pi / 180.0;
-        try self.scene.setTransform(selected, t);
+        try self.applyTransformWithHistory(selected, t);
     }
 
     pub fn setRotationSelected(self: *Editor, deg: f32) !void {
@@ -677,7 +719,7 @@ pub const Editor = struct {
         const node = try self.scene.getConst(selected);
         var t = node.transform;
         t.rotation = deg * std.math.pi / 180.0;
-        try self.scene.setTransform(selected, t);
+        try self.applyTransformWithHistory(selected, t);
     }
 
     pub fn setScaleSelected(self: *Editor, sx: f32, sy: f32) !void {
@@ -686,7 +728,7 @@ pub const Editor = struct {
         var t = node.transform;
         t.scale.x = sx;
         t.scale.y = sy;
-        try self.scene.setTransform(selected, t);
+        try self.applyTransformWithHistory(selected, t);
     }
 
     pub fn flipScaleX(self: *Editor) !void {
@@ -1118,6 +1160,38 @@ pub const Editor = struct {
         self.active_panel = .script;
         self.editing_script = true;
         self.script_cursor = @min(self.script_cursor, self.script_source.items.len);
+    }
+
+    pub fn beginScriptSearch(self: *Editor) void {
+        if (self.active_panel != .script) return;
+        self.search_active = true;
+        self.search_len = 0;
+    }
+
+    pub fn appendSearchText(self: *Editor, text: []const u8) void {
+        if (!self.search_active) return;
+        const count = @min(text.len, self.search_buffer.len - self.search_len);
+        @memcpy(self.search_buffer[self.search_len .. self.search_len + count], text[0..count]);
+        self.search_len += count;
+        self.findNextSearchMatch();
+    }
+
+    pub fn backspaceSearch(self: *Editor) void {
+        if (self.search_active and self.search_len > 0) self.search_len -= 1;
+        self.findNextSearchMatch();
+    }
+
+    pub fn endScriptSearch(self: *Editor) void {
+        self.search_active = false;
+    }
+
+    pub fn findNextSearchMatch(self: *Editor) void {
+        if (!self.search_active or self.search_len == 0) return;
+        const needle = self.search_buffer[0..self.search_len];
+        const source = self.script_source.items;
+        const start = @min(self.script_cursor + 1, source.len);
+        const found = std.mem.indexOf(u8, source[start..], needle) orelse std.mem.indexOf(u8, source, needle) orelse return;
+        self.script_cursor = if (found >= start) found else found;
     }
 
     pub fn moveScriptCursor(self: *Editor, delta: isize) void {

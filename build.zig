@@ -291,4 +291,38 @@ pub fn build(b: *std.Build) void {
     const run_core_tests = b.addRunArtifact(core_tests);
     const test_step = b.step("test", "Run Zigine tests");
     test_step.dependOn(&run_core_tests.step);
+
+    // ------------------------------------------------------------
+    // SDL3 game demos
+    // ------------------------------------------------------------
+    const demo_specs = .{
+        .{ "space-invaders-demo", "demos/space_invaders/src/main.zig", "Run the Space Invaders demo" },
+        .{ "flappy-bird-demo", "demos/flappy_bird/src/main.zig", "Run the Flappy Bird demo" },
+        .{ "pacman-demo", "demos/pacman/src/main.zig", "Run the Pacman demo" },
+    };
+    const demo_ui_render_module = b.createModule(.{
+        .root_source_file = b.path("src/ui/render_sdl.zig"),
+        .target = target,
+        .optimize = optimize,
+    });
+    demo_ui_render_module.addImport("ui-components", ui_components_module);
+    inline for (demo_specs) |spec| {
+        const demo_module = b.createModule(.{
+            .root_source_file = b.path(spec[1]),
+            .target = target,
+            .optimize = optimize,
+        });
+        demo_module.addImport("sdl3", sdl3_module);
+        demo_module.addImport("renderer", renderer_module);
+        demo_module.addImport("ui-render", demo_ui_render_module);
+        demo_module.addImport("ui-components", ui_components_module);
+        const demo_exe = b.addExecutable(.{ .name = spec[0], .root_module = demo_module });
+        b.installArtifact(demo_exe);
+        const demo_build_step = b.step(spec[0] ++ "-build", "Build " ++ spec[0]);
+        demo_build_step.dependOn(b.getInstallStep());
+        const demo_run = b.addRunArtifact(demo_exe);
+        demo_run.step.dependOn(b.getInstallStep());
+        const demo_step = b.step(spec[0], spec[2]);
+        demo_step.dependOn(&demo_run.step);
+    }
 }

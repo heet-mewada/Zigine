@@ -1,0 +1,7 @@
+ZIGINE_SCENE_V1
+node_2d-1100011FlappyBird
+node_2d0100011World
+sprite_2d11-1680.1445312500.60.6Bird
+sprite_2d11280-100011Pipe_1
+sprite_2d1152060011Pipe_2
+camera_2d0100011Camera2D

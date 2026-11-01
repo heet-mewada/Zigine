@@ -13,6 +13,17 @@ pub const Vec2 = renderer_mod.Vec2;
 pub const Rect = renderer_mod.Rect;
 pub const Color = renderer_mod.Color;
 
+fn fallbackSpriteColor(name: []const u8) Color {
+    if (std.mem.startsWith(u8, name, "Invader_0_")) return .{ .r = 255, .g = 91, .b = 116, .a = 230 };
+    if (std.mem.startsWith(u8, name, "Invader_")) return .{ .r = 102, .g = 220, .b = 255, .a = 230 };
+    if (std.mem.eql(u8, name, "Defender")) return .{ .r = 116, .g = 255, .b = 154, .a = 230 };
+    if (std.mem.eql(u8, name, "Bird")) return .{ .r = 255, .g = 220, .b = 67, .a = 230 };
+    if (std.mem.startsWith(u8, name, "Pipe_")) return .{ .r = 64, .g = 190, .b = 88, .a = 230 };
+    if (std.mem.eql(u8, name, "Player")) return .{ .r = 255, .g = 220, .b = 20, .a = 230 };
+    if (std.mem.eql(u8, name, "Ghost")) return .{ .r = 235, .g = 55, .b = 75, .a = 230 };
+    return .{ .r = 50, .g = 90, .b = 140, .a = 120 };
+}
+
 /// Renders actual scene content.
 ///
 /// Node2D and Node are structural nodes, not visible geometry.
@@ -38,6 +49,26 @@ pub const SceneRenderer = struct {
         if (!self.show_gizmos) return;
 
         const scene = tree.getScene();
+
+        // Demo scenes use the same logical camera as their SDL counterparts.
+        // Paint their world background before gizmos and sprite nodes so the
+        // editor shows the complete scene, not just the node overlays.
+        const world = camera.visibleWorldRect();
+        const background = if (std.mem.eql(u8, scene.name, "SpaceInvaders"))
+            Color{ .r = 7, .g = 12, .b = 28, .a = 255 }
+        else if (std.mem.eql(u8, scene.name, "FlappyBird"))
+            Color{ .r = 99, .g = 191, .b = 240, .a = 255 }
+        else if (std.mem.eql(u8, scene.name, "Pacman"))
+            Color{ .r = 0, .g = 0, .b = 0, .a = 255 }
+        else
+            null;
+        if (background) |color| {
+            const top_left = camera.worldToScreen(.{ .x = world.x, .y = world.y });
+            try renderer.drawRect(
+                .{ .x = top_left.x, .y = top_left.y, .width = world.width * camera.zoom, .height = world.height * camera.zoom },
+                color,
+            );
+        }
 
         // 1. Draw World Origin (0, 0) axes
         const origin_screen = camera.worldToScreen(.{ .x = 0, .y = 0 });
@@ -130,7 +161,7 @@ pub const SceneRenderer = struct {
                     if (!has_texture) {
                         try renderer.drawRect(
                             bounds,
-                            .{ .r = 50, .g = 90, .b = 140, .a = 120 },
+                            fallbackSpriteColor(node.name),
                         );
                         try renderer.drawRectOutline(
                             bounds,
